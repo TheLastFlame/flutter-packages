@@ -55,6 +55,38 @@ class DynamicColorBuilderState extends State<DynamicColorBuilder> {
   // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> initPlatformState() async {
     // Platform messages may fail, so we use a try/catch PlatformException.
+    
+    // First, try to get system colors directly (Android 12+)
+    try {
+      final ColorScheme? lightSystemColors = await DynamicColorPlugin.getSystemColorScheme(
+        brightness: Brightness.light,
+      );
+      final ColorScheme? darkSystemColors = await DynamicColorPlugin.getSystemColorScheme(
+        brightness: Brightness.dark,
+      );
+
+      // If the widget was removed from the tree while the asynchronous platform
+      // message was in flight, we want to discard the reply rather than calling
+      // setState to update our non-existent appearance.
+      if (!mounted) return;
+
+      if (lightSystemColors != null && darkSystemColors != null) {
+        if (kDebugMode) {
+          debugPrint('dynamic_color: System colors detected (direct from Android).');
+        }
+        setState(() {
+          _light = lightSystemColors;
+          _dark = darkSystemColors;
+        });
+        return;
+      }
+    } on PlatformException {
+      if (kDebugMode) {
+        debugPrint('dynamic_color: Failed to obtain system colors directly.');
+      }
+    }
+
+    // Fallback to core palette method
     try {
       CorePalette? corePalette = await DynamicColorPlugin.getCorePalette();
 
